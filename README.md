@@ -49,21 +49,3 @@ To run PromptForge AI locally on your machine:
    ```bash
    git clone [https://github.com/mehulchavan11/PromptForge-AI.git](https://github.com/mehulchavan11/PromptForge-AI.git)
    cd PromptForge-AI
-   Activate your virtual environment:
-
-Bash
-# On Windows
-.\venv\Scripts\activate
-Install dependencies:
-(Ensure you have your requirements.txt ready)
-
-Bash
-pip install -r requirements.txt
-Run the application:
-
-Bash
-streamlit run Home.py
-👨‍💻 Author
-Mehul Chavan
-
-GitHub: @mehulchavan11
