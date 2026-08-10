@@ -3,3 +3,4 @@ pandas
 plotly
 google-generativeai
 python-dotenv
+PyPDF2
