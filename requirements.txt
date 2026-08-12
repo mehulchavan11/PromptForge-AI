@@ -4,3 +4,7 @@ plotly
 google-generativeai
 python-dotenv
 PyPDF2
+openpyxl
+SQLAlchemy
+psycopg2-binary
+python-docx

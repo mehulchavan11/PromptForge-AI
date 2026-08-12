@@ -1,205 +1,181 @@
 import streamlit as st
 import pandas as pd
-import io
-import os
 import plotly.express as px
 import google.generativeai as genai
+import os
 from dotenv import load_dotenv
 
-# 1. Page Configuration (Must be the first Streamlit command)
-st.set_page_config(
-    page_title="Data Hub | PromptForge",
-    page_icon="📊",
-    layout="wide"
-)
+# Import V3 Backend Pipelines from src/
+from src.data.ingestion import load_data
+from src.data.postgres import save_dataframe_to_postgres, execute_safe_query
+from src.ai.sql_generator import generate_sql
 
-# Load environment variables for Gemini
+# 1. Page & Environment Configuration
+st.set_page_config(page_title="Data Hub | PromptForge", page_icon="📊", layout="wide")
 load_dotenv()
 
 # 2. Header Section
-st.title("📊 Data Hub")
+st.title("📊 Data Intelligence Hub")
 st.markdown("""
-Upload your dataset to instantly generate data profiles, clean your data, and prepare it for AI-driven insights. 
-*Supported formats: CSV, Excel (.xlsx, .xls)*
+Upload a dataset to automatically clean, profile, and store it in PostgreSQL. 
+Then, create custom visualizations, query it using Natural Language SQL, or generate an AI Executive Report!
 """)
 st.divider()
 
-# 3. File Upload Module
-uploaded_file = st.file_uploader("Upload your dataset", type=["csv", "xlsx", "xls"])
+# --- FEATURE 1: PIPELINE INGESTION & POSTGRESQL STORAGE ---
+uploaded_file = st.file_uploader("Upload structured dataset (CSV, XLSX, JSON)", type=["csv", "xlsx", "xls", "json"])
 
 if uploaded_file is not None:
     try:
-        # Show a loading spinner while processing large files
-        with st.spinner("Profiling dataset..."):
+        with st.spinner("Processing pipeline & uploading to database..."):
+            # Run V3 Ingestion (Load, Error Check, Clean, Whitespace Strip, Deduplicate)
+            df, status = load_data(uploaded_file, uploaded_file.name)
             
-            # 4. Data Loading Logic
-            file_extension = uploaded_file.name.split('.')[-1]
-            if file_extension == 'csv':
-                df = pd.read_csv(uploaded_file)
+            if not status["success"]:
+                st.error(f"Ingestion Failed: {status['error']}")
+                st.stop()
+                
+            st.success(f"Successfully processed **{uploaded_file.name}**")
+            
+            # Format clean table name and push to Neon PostgreSQL
+            table_name = uploaded_file.name.split('.')[0].lower().replace(" ", "_").replace("-", "_")
+            db_status = save_dataframe_to_postgres(df, table_name)
+            
+            if db_status["success"]:
+                st.info(f"💾 Live PostgreSQL Table Created: **`{table_name}`**")
             else:
-                df = pd.read_excel(uploaded_file)
-            
-            st.success(f"Successfully loaded: **{uploaded_file.name}**")
+                st.warning(f"Database warning: {db_status['error']}")
 
-            # 5. Data Preview Section
-            st.subheader("Data Preview")
-            # Display the first 100 rows to keep the UI fast
+        # --- FEATURE 2: DATA PROFILE KPIs ---
+        st.subheader("📋 Data Profile Summary")
+        
+        total_rows = df.shape[0]
+        total_columns = df.shape[1]
+        total_missing = df.isnull().sum().sum()
+        total_duplicates = df.duplicated().sum()
+
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("Total Rows", f"{total_rows:,}")
+        col2.metric("Total Columns", f"{total_columns:,}")
+        col3.metric("Missing Values", f"{total_missing:,}", 
+                    delta="Action Required" if total_missing > 0 else "Clean", 
+                    delta_color="inverse")
+        col4.metric("Duplicate Rows", f"{total_duplicates:,}", 
+                    delta="Action Required" if total_duplicates > 0 else "Clean", 
+                    delta_color="inverse")
+
+        with st.expander("Preview Cleaned Dataset (First 100 Rows)"):
             st.dataframe(df.head(100), use_container_width=True)
 
-            st.divider()
+        st.divider()
 
-            # 6. Automated EDA (KPI Cards)
-            st.subheader("Data Profile Summary")
+        # --- FEATURE 3: INTERACTIVE CHART BUILDER ---
+        st.subheader("📈 Interactive Custom Visualizations")
+        
+        numeric_columns = df.select_dtypes(include='number').columns.tolist()
+        all_columns = df.columns.tolist()
+
+        if len(numeric_columns) > 0:
+            chart_col1, chart_col2, chart_col3 = st.columns(3)
             
-            # Calculate core metrics
-            total_rows = df.shape[0]
-            total_columns = df.shape[1]
-            total_missing = df.isnull().sum().sum()
-            total_duplicates = df.duplicated().sum()
-
-            # Display metrics in a clean row
-            col1, col2, col3, col4 = st.columns(4)
-            col1.metric("Total Rows", f"{total_rows:,}")
-            col2.metric("Total Columns", f"{total_columns:,}")
+            with chart_col1:
+                chart_type = st.selectbox("Select Chart Type", ["Bar Chart", "Line Chart", "Scatter Plot"])
+            with chart_col2:
+                x_axis = st.selectbox("Select X-Axis", all_columns)
+            with chart_col3:
+                y_axis = st.selectbox("Select Y-Axis", numeric_columns)
             
-            # Highlight missing values and duplicates in red if they exist
-            col3.metric("Missing Values", f"{total_missing:,}", 
-                        delta="Action Required" if total_missing > 0 else "Clean", 
-                        delta_color="inverse")
-            col4.metric("Duplicate Rows", f"{total_duplicates:,}", 
-                        delta="Action Required" if total_duplicates > 0 else "Clean", 
-                        delta_color="inverse")
-
-            st.write("") # Spacer
-
-            # 7. Detailed Schema & Missing Values Breakdown
-            schema_col, missing_col = st.columns(2)
-
-            with schema_col:
-                st.write("**Column Data Types**")
-                # Convert dtypes to string for clean Streamlit rendering
-                dtype_df = pd.DataFrame(df.dtypes, columns=['Data Type']).astype(str)
-                st.dataframe(dtype_df, use_container_width=True)
-
-            with missing_col:
-                st.write("**Missing Values per Column**")
-                missing_df = pd.DataFrame(df.isnull().sum(), columns=['Missing Count'])
-                # Filter out columns that have 0 missing values
-                missing_df = missing_df[missing_df['Missing Count'] > 0]
-                
-                if missing_df.empty:
-                    st.info("🎉 No missing values detected in any column!")
-                else:
-                    st.dataframe(missing_df, use_container_width=True)
-
-            st.divider()
-
-            # 8. Interactive Data Visualization
-            st.subheader("📈 Dynamic Visualizations")
-            st.write("Explore your data by selecting variables and chart types below.")
-
-            # Filter columns by data type to prevent charting errors
-            # CHANGE IT TO THIS:
-            numeric_columns = df.select_dtypes(include='number').columns.tolist()
-            all_columns = df.columns.tolist()
-
-            if len(numeric_columns) > 0:
-                # Create controls for the user to build their own chart
-                chart_col1, chart_col2, chart_col3 = st.columns(3)
-                
-                with chart_col1:
-                    chart_type = st.selectbox("Select Chart Type", ["Bar Chart", "Line Chart", "Scatter Plot"])
-                with chart_col2:
-                    x_axis = st.selectbox("Select X-Axis", all_columns)
-                with chart_col3:
-                    y_axis = st.selectbox("Select Y-Axis", numeric_columns)
-                
-                if chart_type == "Bar Chart":
-                    fig = px.bar(df, x=x_axis, y=y_axis, title=f"{y_axis} by {x_axis}", template="plotly_white")
-                elif chart_type == "Line Chart":
-                    fig = px.line(df, x=x_axis, y=y_axis, title=f"{y_axis} over {x_axis}", template="plotly_white")
-                else:
-                    fig = px.scatter(df, x=x_axis, y=y_axis, title=f"{y_axis} vs {x_axis}", template="plotly_white")
-                    
-                # Render the chart in Streamlit
-                st.plotly_chart(fig, use_container_width=True)
+            if chart_type == "Bar Chart":
+                fig = px.bar(df, x=x_axis, y=y_axis, title=f"{y_axis} by {x_axis}", template="plotly_white")
+            elif chart_type == "Line Chart":
+                fig = px.line(df, x=x_axis, y=y_axis, title=f"{y_axis} over {x_axis}", template="plotly_white")
             else:
-                st.info("No numerical columns found to generate charts.")
+                fig = px.scatter(df, x=x_axis, y=y_axis, title=f"{y_axis} vs {x_axis}", template="plotly_white")
+                
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("No numerical columns found to generate custom charts.")
 
-            st.divider()
-            
-            # 9. AI Insight Generator
-            st.subheader("🤖 AI Business Insights")
-            st.write("Let PromptForge AI analyze your dataset and generate an executive report.")
+        st.divider()
 
-            # Use a button so the API isn't called every time the user changes a chart dropdown
-            if st.button("Generate Executive Report", type="primary"):
-                with st.spinner("Analyzing statistical distributions and generating insights..."):
+        # --- FEATURE 4: NATURAL LANGUAGE SQL QUERY ENGINE ---
+        st.subheader("🤖 Natural Language Database Query")
+        st.caption("Ask questions about your data in plain English. Gemini translates questions into safe SQL executed against PostgreSQL.")
+        
+        user_question = st.text_input("Ask a question about this data (e.g., 'Show me the top 5 records by revenue')")
+        
+        if st.button("Generate & Run Query") and user_question:
+            with st.spinner("Translating question to SQL..."):
+                schema_info = ", ".join([f"{col} ({dtype})" for col, dtype in zip(df.columns, df.dtypes)])
+                sql_status = generate_sql(user_question, table_name, schema_info)
+                
+                if not sql_status["success"]:
+                    st.error(sql_status["error"])
+                else:
+                    st.code(sql_status["sql"], language="sql")
+                    
                     try:
-                        # Configure Gemini (Ensure GEMINI_API_KEY is in your .env file)
-                        genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-                        
-                        # Set deterministic parameters for analytical consistency
-                        generation_config = {
-                            "temperature": 0.2,
-                            "top_p": 0.95,
-                        }
-                        model = genai.GenerativeModel(
-                            model_name='gemini-2.5-flash',
-                            generation_config=generation_config
-                        )
+                        results_df = execute_safe_query(sql_status["sql"])
+                        st.write("### Query Results")
+                        st.dataframe(results_df, use_container_width=True)
+                    except Exception as e:
+                        st.error(f"SQL Execution Error: {str(e)}")
 
-                        # Create a compact data summary context to send to the LLM
-                        data_context = f"""
-                        Data Profile:
-                        - Total Rows: {df.shape[0]}
-                        - Total Columns: {df.shape[1]}
+        st.divider()
 
-                        Schema and Data Types:
-                        {df.dtypes.to_string()}
+        # --- FEATURE 5: AI EXECUTIVE BUSINESS REPORT ---
+        st.subheader("📝 AI Business Insights Report")
+        st.write("Let PromptForge AI analyze overall statistical distributions and generate an executive report.")
 
-                        Statistical Summary of Numeric Data:
-                        {df.describe().to_string()}
+        if st.button("Generate Executive Report", type="primary"):
+            with st.spinner("Analyzing statistical distributions..."):
+                try:
+                    genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+                    
+                    generation_config = {
+                        "temperature": 0.2,
+                        "top_p": 0.95,
+                    }
+                    model = genai.GenerativeModel(
+                        model_name='gemini-2.5-flash',
+                        generation_config=generation_config
+                    )
 
-                        Sample Data (First 3 rows):
-                        {df.head(3).to_string()}
-                        """
+                    data_context = f"""
+                    Data Profile:
+                    - Total Rows: {df.shape[0]}
+                    - Total Columns: {df.shape[1]}
 
-                        # The core Prompt Engineering for the AI Analyst Persona
-                        prompt = f"""
-                        You are an expert Data Analyst and Business Strategist. 
-                        I am providing you with a statistical summary of a dataset. 
-                        Analyze this data and provide actionable business insights.
+                    Schema and Data Types:
+                    {df.dtypes.to_string()}
 
-                        Dataset Summary:
-                        {data_context}
+                    Statistical Summary:
+                    {df.describe().to_string()}
+                    """
 
-                        Format your response exactly as follows using Markdown:
-                        
-                        ### 📈 Executive Summary
-                        [Write a 2-3 sentence overview of the data's primary narrative]
+                    prompt = f"""
+                    You are an expert Data Analyst and Business Strategist. 
+                    Analyze this dataset summary and provide actionable business insights.
 
-                        ### 🔍 Key Findings
-                        [Provide 3-4 bullet points highlighting significant trends, averages, or outliers]
+                    Dataset Summary:
+                    {data_context}
 
-                        ### ⚠️ Data Quality & Risks
-                        [Note any missing data issues, concerning patterns, or data quality warnings based on the summary]
+                    Format your response using Markdown:
+                    ### 📈 Executive Summary
+                    ### 🔍 Key Findings
+                    ### ⚠️ Data Quality & Risks
+                    ### 💡 Strategic Recommendations
+                    """
 
-                        ### 💡 Strategic Recommendations
-                        [Provide 2-3 actionable business next steps based on these findings]
-                        """
+                    response = model.generate_content(prompt)
+                    
+                    with st.container(border=True):
+                        st.markdown(response.text)
 
-                        response = model.generate_content(prompt)
-                        
-                        # Render the AI's markdown response in a clean UI container
-                        with st.container(border=True):
-                            st.markdown(response.text)
-
-                    except Exception as ai_error:
-                        st.error(f"AI Generation failed: {str(ai_error)}")
-                        st.info("Make sure your GEMINI_API_KEY is set in your .env file.")
+                except Exception as ai_error:
+                    st.error(f"AI Generation failed: {str(ai_error)}")
 
     except Exception as e:
         st.error(f"An error occurred while processing the file: {str(e)}")
 else:
-    st.info("Please upload a CSV or Excel file to begin.")
+    st.info("Please upload a CSV, Excel, or JSON file to begin.")
