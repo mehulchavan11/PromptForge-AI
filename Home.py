@@ -36,8 +36,8 @@ st.markdown("""
 # --- Hero Section (Centered via HTML/CSS) ---
 st.markdown("""
     <div class="hero-box">
-        <div class="hero-title">🤖 PromptForge AI</div>
-        <div class="hero-subtitle">Data & Knowledge Intelligence Platform</div>
+        <div class="hero-title">⚡ PromptForge AI</div>
+        <div class="hero-subtitle">Enterprise Agentic Reasoning & Hybrid RAG Engine</div>
     </div>
 """, unsafe_allow_html=True)
 
@@ -48,14 +48,14 @@ st.subheader("Platform Modules")
 st.write("Select a module to begin your workflow.")
 st.write("") # Add a little breathing room
 
-# Switched to 2 columns since we have 4 main modules now (creates a clean 2x2 grid)
+# 2x2 Grid for the 4 main modules
 col1, col2 = st.columns(2)
 
-# Updated names for maximum professional appeal
+# Exact paths matched to your local directory structure
 tools = [
-    ("📊 Data Intelligence", "pages/1_📊_Data_Hub.py"),
-    ("📚 Knowledge Intelligence", "pages/2_📚_Knowledge_Hub.py"),
-    ("🤖 AI Workspace", "pages/3_💬_AI_Workspace.py"),
+    ("📊 Data Hub (Structured SQL)", "pages/1_📊_Data_Hub.py"),
+    ("📚 Knowledge Hub (Vector RAG)", "pages/2_📚_Knowledge_Hub.py"),
+    ("🤖 AI Workspace (Agentic Chat)", "pages/3_💬_AI_Workspace.py"),
     ("🛠️ AI Utilities", "pages/4_🛠️_AI_Utilities.py")
 ]
 
@@ -71,27 +71,27 @@ st.markdown("---")
 
 # --- Dashboard Info ---
 st.header("About PromptForge AI")
-st.write("PromptForge AI is an advanced Intelligence Platform designed to bridge the gap between raw data and actionable business insights. We empower users to automate Exploratory Data Analysis (EDA), extract knowledge from documents, and generate executive summaries using specialized AI workflows.")
+st.write("PromptForge AI is an advanced AI architecture demonstrating autonomous reasoning across Structured Database Metrics (SQL) and Unstructured Document Context (RAG). It utilizes intelligent routing, orchestrators, and reviewer nodes to prevent hallucinations and deliver verified, cited insights.")
 
 st.write("") # Spacing
 
 col_a, col_b = st.columns(2)
 with col_a:
-    st.subheader("Core Mechanics")
+    st.subheader("Core Capabilities")
     st.markdown("""
-    * **Automated Profiling:** Instant EDA and KPI generation.
-    * **Dynamic Visualizations:** Interactive Plotly charting.
-    * **AI Insights:** Executive summaries from raw datasets.
-    * **Context Isolation:** Protecting data integrity via Prompt Engineering.
+    * **Automated SQL Engineering:** Translates natural language to SQL against live PostgreSQL.
+    * **Semantic RAG Engine:** Math-based chunking and vector retrieval via local ChromaDB.
+    * **Agentic Routing:** AI autonomously classifies intents (SQL vs. RAG vs. Hybrid).
+    * **Reviewer Node (QA):** Validates facts and enforces strict citation rules.
     """)
 with col_b:
     st.subheader("Technology Stack")
     st.markdown("""
     * **AI Engine:** Google Gemini 2.5 Flash
+    * **Database (SQL):** Neon Serverless PostgreSQL & SQLAlchemy
+    * **Vector Store (NoSQL):** ChromaDB Persistent Client
     * **Frontend:** Streamlit Python
-    * **Data Processing:** Pandas & Plotly
-    * **Outputs:** JSON, Markdown, & Interactive Dashboards
     """)
 
 st.markdown("---")
-st.markdown("<p style='text-align: center; color: gray; font-size: 14px;'>© 2026 PromptForge AI | Version 2.0.0</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: gray; font-size: 14px;'>© 2026 PromptForge AI | Version 4.0.0</p>", unsafe_allow_html=True)

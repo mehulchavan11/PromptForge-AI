@@ -5,10 +5,14 @@ import google.generativeai as genai
 import os
 from dotenv import load_dotenv
 
-# Import V3 Backend Pipelines from src/
+# Import Core Backend Pipelines
 from src.data.ingestion import load_data
 from src.data.postgres import save_dataframe_to_postgres, execute_safe_query
 from src.ai.sql_generator import generate_sql
+
+# Import V5.0 Enterprise Upgrades
+from src.data.cleaner import clean_dataset
+from src.data.schema_mapper import detect_schema_roles
 
 # 1. Page & Environment Configuration
 st.set_page_config(page_title="Data Hub | PromptForge", page_icon="📊", layout="wide")
@@ -22,31 +26,43 @@ Then, create custom visualizations, query it using Natural Language SQL, or gene
 """)
 st.divider()
 
-# --- FEATURE 1: PIPELINE INGESTION & POSTGRESQL STORAGE ---
+# --- FEATURE 1: V5.0 PIPELINE INGESTION & POSTGRESQL STORAGE ---
 uploaded_file = st.file_uploader("Upload structured dataset (CSV, XLSX, JSON)", type=["csv", "xlsx", "xls", "json"])
 
 if uploaded_file is not None:
     try:
-        with st.spinner("Processing pipeline & uploading to database..."):
-            # Run V3 Ingestion (Load, Error Check, Clean, Whitespace Strip, Deduplicate)
-            df, status = load_data(uploaded_file, uploaded_file.name)
+        with st.spinner("Scrubbing data & uploading to database..."):
+            # 1. Ingest Raw Dataset
+            raw_df, status = load_data(uploaded_file, uploaded_file.name)
             
             if not status["success"]:
                 st.error(f"Ingestion Failed: {status['error']}")
                 st.stop()
                 
-            st.success(f"Successfully processed **{uploaded_file.name}**")
+            # 2. Apply V5 Data Cleaning Pipeline
+            df = clean_dataset(raw_df)
+            st.success(f"Successfully processed and cleaned **{uploaded_file.name}**")
             
-            # Format clean table name and push to Neon PostgreSQL
+            # 3. Auto-Detect Semantic Schema
+            mapped_schema = detect_schema_roles(df)
+            
+            # 4. Format clean table name and push to Neon PostgreSQL
             table_name = uploaded_file.name.split('.')[0].lower().replace(" ", "_").replace("-", "_")
             db_status = save_dataframe_to_postgres(df, table_name)
             
+            # 5. Store Schema & Table Context into Session Memory for AI Workspace
+            st.session_state['auto_schema'] = mapped_schema
+            st.session_state['active_table'] = table_name
+            
             if db_status["success"]:
                 st.info(f"💾 Live PostgreSQL Table Created: **`{table_name}`**")
+                with st.expander("🧠 View Auto-Detected Schema Memory"):
+                    st.code(mapped_schema, language="text")
             else:
                 st.warning(f"Database warning: {db_status['error']}")
 
         # --- FEATURE 2: DATA PROFILE KPIs ---
+        st.divider()
         st.subheader("📋 Data Profile Summary")
         
         total_rows = df.shape[0]
@@ -67,9 +83,8 @@ if uploaded_file is not None:
         with st.expander("Preview Cleaned Dataset (First 100 Rows)"):
             st.dataframe(df.head(100), use_container_width=True)
 
-        st.divider()
-
         # --- FEATURE 3: INTERACTIVE CHART BUILDER ---
+        st.divider()
         st.subheader("📈 Interactive Custom Visualizations")
         
         numeric_columns = df.select_dtypes(include='number').columns.tolist()
@@ -96,9 +111,8 @@ if uploaded_file is not None:
         else:
             st.info("No numerical columns found to generate custom charts.")
 
+       # --- FEATURE 4: NATURAL LANGUAGE SQL QUERY ENGINE ---
         st.divider()
-
-        # --- FEATURE 4: NATURAL LANGUAGE SQL QUERY ENGINE ---
         st.subheader("🤖 Natural Language Database Query")
         st.caption("Ask questions about your data in plain English. Gemini translates questions into safe SQL executed against PostgreSQL.")
         
@@ -106,24 +120,57 @@ if uploaded_file is not None:
         
         if st.button("Generate & Run Query") and user_question:
             with st.spinner("Translating question to SQL..."):
-                schema_info = ", ".join([f"{col} ({dtype})" for col, dtype in zip(df.columns, df.dtypes)])
-                sql_status = generate_sql(user_question, table_name, schema_info)
+                sql_status = generate_sql(user_question, table_name, mapped_schema)
                 
                 if not sql_status["success"]:
                     st.error(sql_status["error"])
                 else:
-                    st.code(sql_status["sql"], language="sql")
-                    
                     try:
                         results_df = execute_safe_query(sql_status["sql"])
-                        st.write("### Query Results")
-                        st.dataframe(results_df, use_container_width=True)
+                        # Save the results into Session Memory so they don't wash out!
+                        st.session_state['last_sql_code'] = sql_status["sql"]
+                        st.session_state['last_sql_df'] = results_df
+                        st.session_state['last_sql_question'] = user_question
                     except Exception as e:
                         st.error(f"SQL Execution Error: {str(e)}")
 
-        st.divider()
+        # Render the SQL results if they exist in memory for the current question
+        if 'last_sql_df' in st.session_state and st.session_state.get('last_sql_question') == user_question:
+            st.code(st.session_state['last_sql_code'], language="sql")
+            results_df = st.session_state['last_sql_df']
+            
+            st.write("### Query Results")
+            st.dataframe(results_df, use_container_width=True)
+
+            # 🌟 INTERACTIVE SQL CHART BUILDER 🌟
+            if len(results_df) > 1 and len(results_df.columns) >= 2:
+                all_res_cols = results_df.columns.tolist()
+                num_cols = results_df.select_dtypes(include='number').columns.tolist()
+                
+                st.write("#### 📊 Visualize Query Results")
+                sc1, sc2, sc3 = st.columns(3)
+                
+                with sc1:
+                    sql_chart_type = st.selectbox("Chart Type", ["Auto", "Bar Chart", "Line Chart", "Scatter Plot"], key="sql_chart")
+                with sc2:
+                    sql_x = st.selectbox("X-Axis", all_res_cols, index=0, key="sql_x")
+                with sc3:
+                    default_y_idx = all_res_cols.index(num_cols[0]) if num_cols else 0
+                    sql_y = st.selectbox("Y-Axis", all_res_cols, index=default_y_idx, key="sql_y")
+                
+                # Render the chosen chart
+                if sql_chart_type == "Bar Chart" or (sql_chart_type == "Auto" and len(num_cols) > 0 and len(all_res_cols) > len(num_cols)):
+                    fig = px.bar(results_df.sort_values(by=sql_y, ascending=False), x=sql_x, y=sql_y, template="plotly_white")
+                    st.plotly_chart(fig, use_container_width=True)
+                elif sql_chart_type == "Line Chart" or (sql_chart_type == "Auto" and len(num_cols) >= 2):
+                    fig = px.line(results_df, x=sql_x, y=sql_y, template="plotly_white", markers=True)
+                    st.plotly_chart(fig, use_container_width=True)
+                elif sql_chart_type == "Scatter Plot":
+                    fig = px.scatter(results_df, x=sql_x, y=sql_y, template="plotly_white")
+                    st.plotly_chart(fig, use_container_width=True)
 
         # --- FEATURE 5: AI EXECUTIVE BUSINESS REPORT ---
+        st.divider()
         st.subheader("📝 AI Business Insights Report")
         st.write("Let PromptForge AI analyze overall statistical distributions and generate an executive report.")
 
@@ -131,15 +178,7 @@ if uploaded_file is not None:
             with st.spinner("Analyzing statistical distributions..."):
                 try:
                     genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-                    
-                    generation_config = {
-                        "temperature": 0.2,
-                        "top_p": 0.95,
-                    }
-                    model = genai.GenerativeModel(
-                        model_name='gemini-2.5-flash',
-                        generation_config=generation_config
-                    )
+                    model = genai.GenerativeModel(model_name='gemini-2.5-flash')
 
                     data_context = f"""
                     Data Profile:
@@ -156,10 +195,8 @@ if uploaded_file is not None:
                     prompt = f"""
                     You are an expert Data Analyst and Business Strategist. 
                     Analyze this dataset summary and provide actionable business insights.
-
-                    Dataset Summary:
-                    {data_context}
-
+                    Dataset Summary: {data_context}
+                    
                     Format your response using Markdown:
                     ### 📈 Executive Summary
                     ### 🔍 Key Findings
@@ -169,11 +206,16 @@ if uploaded_file is not None:
 
                     response = model.generate_content(prompt)
                     
-                    with st.container(border=True):
-                        st.markdown(response.text)
+                    # Save report to memory so it doesn't wash out!
+                    st.session_state['exec_report'] = response.text
 
                 except Exception as ai_error:
                     st.error(f"AI Generation failed: {str(ai_error)}")
+
+        # Render the report if it exists in memory
+        if 'exec_report' in st.session_state:
+            with st.container(border=True):
+                st.markdown(st.session_state['exec_report'])
 
     except Exception as e:
         st.error(f"An error occurred while processing the file: {str(e)}")

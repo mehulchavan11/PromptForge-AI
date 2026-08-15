@@ -8,3 +8,4 @@ openpyxl
 SQLAlchemy
 psycopg2-binary
 python-docx
+chromadb
