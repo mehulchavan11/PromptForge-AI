@@ -1,23 +1,27 @@
 # ⚡ PromptForge AI
+**Enterprise-Grade Multi-Agent Data & Knowledge Intelligence Platform**
 
 ![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=for-the-badge&logo=Streamlit&logoColor=white)
 ![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
-![Gemini AI](https://img.shields.io/badge/Gemini_2.5_Flash-8E75B2?style=for-the-badge&logo=googlebard&logoColor=white)
+![Google Gemini](https://img.shields.io/badge/Gemini_2.5_Flash-8E75B2?style=for-the-badge&logo=googlebard&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)
+![ChromaDB](https://img.shields.io/badge/ChromaDB-Vector_Store-orange?style=for-the-badge)
+![Scikit-Learn](https://img.shields.io/badge/Scikit--Learn-F7931E?style=for-the-badge&logo=scikit-learn&logoColor=white)
 
-An advanced Data Intelligence Platform designed to bridge the gap between raw datasets and actionable business insights. Built with a clean **Streamlit** architecture and powered by the **Google Gemini 2.5 Flash** AI engine.
+PromptForge AI is an agentic data intelligence platform designed to reason across **structured databases (PostgreSQL)** and **unstructured documents (ChromaDB)** in a unified workflow. It autonomously routes queries, writes and executes safe SQL, retrieves document citations, performs predictive machine learning analytics, and validates outputs using a self-correcting Critic Agent.
 
 ---
 
 ## 📸 Platform Overview
 
 ### 1. The Data Hub
-*(Upload, analyze, and profile raw datasets instantly)*
+*(Upload, clean, validate, and dynamically profile structured datasets)*
 <div align="center">
   <img src="assets/screenshots/data_hub.png" alt="Data Hub Screenshot" width="800"/>
 </div>
 
 ### 2. Knowledge Hub & AI Workspace
-*(Interact with data, generate insights, and isolate context)*
+*(RAG knowledge ingestion, multi-agent hybrid reasoning, ML forecasting, and executive PDF exports)*
 <div align="center">
   <img src="assets/screenshots/knowledge_hub.png" alt="Knowledge Hub Screenshot" width="400"/>
   <img src="assets/screenshots/ai_workspace.png" alt="AI Workspace Screenshot" width="400"/>
@@ -25,52 +29,105 @@ An advanced Data Intelligence Platform designed to bridge the gap between raw da
 
 ---
 
-## 🚀 Core Mechanics
+## 🧠 Multi-Agent Architecture
 
-* **Automated Profiling:** Instant Exploratory Data Analysis (EDA) and dynamic KPI generation.
-* **Dynamic Visualizations:** Interactive charting and graphing using Plotly to bring numbers to life.
-* **AI Business Insights:** Executive summaries generated directly from raw datasets without manual prompting.
-* **Context Isolation:** Protecting data integrity via advanced Prompt Engineering pipelines.
+PromptForge utilizes a modular, multi-agent pipeline to ensure explainability, safety, and predictive precision:
+User Query
+                          │
+                          ▼
+                 ┌──────────────────┐
+                 │ 🧭 Router Agent  │
+                 └────────┬─────────┘
+      ┌───────────────────┼───────────────────┬──────────────────┐
+      ▼                   ▼                   ▼                  ▼
+┌──────────────┐    ┌──────────────┐    ┌──────────────┐   ┌──────────────┐
+│  📊 SQL Path │    │  📚 RAG Path │    │  🔮 ML Path  │   │ 🔀 Hybrid    │
+│  PostgreSQL  │    │   ChromaDB   │    │ Scikit-Learn │   │ (SQL + RAG)  │
+└───────┬──────┘    └───────┬──────┘    └───────┬──────┘   └───────┬──────┘
+└───────────────────┼───────────────────┴──────────────────┘
+▼
+┌───────────────────┐
+│ 🧠 AI Synthesizer │
+└─────────┬─────────┘
+▼
+┌───────────────────┐
+│ 🛡️ Critic Agent   │ ◄── Anti-Hallucination Guardrail
+└─────────┬─────────┘
+▼
+Final Approved Executive Brief (+ PDF)
 
-## 🛠️ Technology Stack
 
-* **Frontend:** Streamlit
-* **AI Engine:** Google Gemini 2.5 Flash API
-* **Data Processing:** Python, Pandas
-* **Visualization:** Plotly
+1. **🧭 Router Agent (`router.py`):** Analyzes natural language intent and dynamically classifies queries into SQL, RAG, ML, or Hybrid pipelines.
+2. **📊 Text-to-SQL Agent (`sql_generator.py`):** Schema-aware SQL generation with parameterized execution against PostgreSQL.
+3. **📚 Document RAG Agent (`rag.py` & `vectorstore.py`):** Semantic search and chunk retrieval with inline citation metadata across uploaded PDFs, DOCX, and TXT files.
+4. **🔮 Predictive ML Engine (`ml_engine.py`):** Autonomous, code-free statistical modeling:
+   * **Time-Series Forecasting:** Dynamic Ridge Regression forecasting (`RidgeCV`) with intelligent temporal step detection.
+   * **Anomaly Detection:** Unsupervised outlier identification using `IsolationForest`.
+5. **🛡️ Critic Node / Reviewer Agent (`reviewer.py`):** Strict verification layer that checks proposed answers against ground-truth contexts (SQL tables, RAG chunks, or ML arrays) using structured JSON output to eliminate hallucinations.
 
 ---
 
-## 💻 Local Installation
+## 🚀 Key Features
 
-To run PromptForge AI locally on your machine:
+* **Hybrid Cross-Reasoning:** Answers complex queries that require both quantitative database records and qualitative document claims (e.g., comparing actual SQL revenue against PDF report targets).
+* **Self-Healing Dynamic Schema Mapping:** Automatically identifies numeric targets (`money`, `revenue`, `sales`) and handles both calendar dates and integer-based time indices.
+* **Explainability by Design:** Inspect raw SQL queries, explore retrieved document chunk evidence, and view raw ML JSON payloads directly in the UI.
+* **One-Click Executive Briefs:** Compiles final, reviewer-approved insights and pipeline metadata into downloadable, formatted PDF reports.
+* **Automated Data Profiling:** Instant EDA, missing value analysis, duplicate detection, and interactive Plotly visual analytics.
+
+---
+
+## 🛠️ Technology Stack
+
+* **Frontend & UI:** Streamlit, Plotly, ReportLab (PDF Generation)
+* **LLM & Reasoning:** Google Gemini (Gemini 2.5 Flash API)
+* **Databases:** PostgreSQL (Neon Cloud), ChromaDB (Vector Store)
+* **Machine Learning & Analytics:** Scikit-Learn, Pandas, NumPy
+* **Architecture:** Multi-Agent Orchestration, Retrieval-Augmented Generation (RAG), Zero-Shot Routing
+
+---
+
+## 📈 The Development Journey (v1.0 → v5.0)
+
+* **v1.0 — Text-to-SQL Foundation:** Natural language to PostgreSQL query generation and safe execution.
+* **v2.0 — Data Intelligence & Analytics:** Automated EDA, dynamic data profiling, and interactive Plotly visualizations.
+* **v3.0 — Data & Document Pipelines:** Ingestion, validation, cleaning, chunking, and metadata indexing pipelines.
+* **v4.0 — Hybrid RAG & Agentic Workflow:** Orchestrator architecture, vector retrieval, cross-source synthesis, and the anti-hallucination Critic Node.
+* **v5.0 — Predictive ML & Production Polish:** Integrated time-series forecasting, unsupervised anomaly detection, and automated PDF executive reporting.
+
+---
+
+## 💻 Local Installation & Setup
 
 1. **Clone the repository:**
    ```bash
    git clone [https://github.com/mehulchavan11/PromptForge-AI.git](https://github.com/mehulchavan11/PromptForge-AI.git)
    cd PromptForge-AI
-   ```
+   Set up a virtual environment:
 
-2. **Activate your virtual environment:**
-   ```bash
-   # On Windows
-   .\venv\Scripts\activate
-   ```
+Bash
+# Windows
+python -m venv venv
+.\venv\Scripts\activate
 
-3. **Install dependencies:**
-   *(Ensure you have your `requirements.txt` ready)*
-   ```bash
-   pip install -r requirements.txt
-   ```
+# macOS / Linux
+python3 -m venv venv
+source venv/bin/activate
+Install dependencies:
 
-4. **Run the application:**
-   ```bash
-   streamlit run Home.py
-   ```
+Bash
+pip install -r requirements.txt
+Configure Environment Variables:
+Create a .env file in the root directory:
 
----
+Code snippet
+GEMINI_API_KEY="your_google_gemini_api_key"
+DATABASE_URL="postgresql://username:password@host:port/database"
+Launch the Application:
 
-## 👨‍💻 Author
+Bash
+streamlit run Home.py
+👨‍💻 Author
+Mehul Chavan
 
-**Mehul Chavan**
-* GitHub: [@mehulchavan11](https://github.com/mehulchavan11)
+GitHub: @mehulchavan11
