@@ -29,32 +29,23 @@ PromptForge AI is an agentic data intelligence platform designed to reason acros
 
 ---
 
-## 🧠 Multi-Agent Architecture
+```mermaid
+flowchart TD
+    User((User Query)) --> Router{🧭 Router Agent}
 
-PromptForge utilizes a modular, multi-agent pipeline to ensure explainability, safety, and predictive precision:
-User Query
-                          │
-                          ▼
-                 ┌──────────────────┐
-                 │ 🧭 Router Agent  │
-                 └────────┬─────────┘
-      ┌───────────────────┼───────────────────┬──────────────────┐
-      ▼                   ▼                   ▼                  ▼
-┌──────────────┐    ┌──────────────┐    ┌──────────────┐   ┌──────────────┐
-│  📊 SQL Path │    │  📚 RAG Path │    │  🔮 ML Path  │   │ 🔀 Hybrid    │
-│  PostgreSQL  │    │   ChromaDB   │    │ Scikit-Learn │   │ (SQL + RAG)  │
-└───────┬──────┘    └───────┬──────┘    └───────┬──────┘   └───────┬──────┘
-└───────────────────┼───────────────────┴──────────────────┘
-▼
-┌───────────────────┐
-│ 🧠 AI Synthesizer │
-└─────────┬─────────┘
-▼
-┌───────────────────┐
-│ 🛡️ Critic Agent   │ ◄── Anti-Hallucination Guardrail
-└─────────┬─────────┘
-▼
-Final Approved Executive Brief (+ PDF)
+    Router -->|Database| SQL[📊 Text-to-SQL Agent<br/>PostgreSQL]
+    Router -->|Documents| RAG[📚 Document RAG<br/>ChromaDB]
+    Router -->|Forecasting| ML[🔮 ML Engine<br/>Scikit-Learn]
+    Router -->|Cross-Analysis| Hybrid[🔀 Hybrid Pipeline<br/>SQL + RAG]
+
+    SQL --> Synth[🧠 AI Synthesizer]
+    RAG --> Synth
+    ML --> Synth
+    Hybrid --> Synth
+
+    Synth --> Critic[🛡️ Critic Node<br/>Anti-Hallucination Guardrail]
+    
+    Critic -->|Validates Data| PDF[📄 Executive Brief / PDF]
 
 
 1. **🧭 Router Agent (`router.py`):** Analyzes natural language intent and dynamically classifies queries into SQL, RAG, ML, or Hybrid pipelines.
