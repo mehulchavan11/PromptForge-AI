@@ -14,20 +14,22 @@ PromptForge AI is an agentic data intelligence platform designed to reason acros
 
 ## 📸 Platform Overview
 
-### 1. The Data Hub
+### 1. Interactive Data & Analytics Hub
 *(Upload, clean, validate, and dynamically profile structured datasets)*
 <div align="center">
-  <img src="assets/screenshots/data_hub.png" alt="Data Hub Screenshot" width="800"/>
+  <img src="assets/screenshots/01-data-analytics-dashboard.png?raw=true" alt="Data Hub Screenshot" width="800"/>
 </div>
 
 ### 2. Knowledge Hub & AI Workspace
-*(RAG knowledge ingestion, multi-agent hybrid reasoning, ML forecasting, and executive PDF exports)*
+*(RAG knowledge ingestion, multi-agent hybrid reasoning, ML forecasting, and professional response generation)*
 <div align="center">
-  <img src="assets/screenshots/knowledge_hub.png" alt="Knowledge Hub Screenshot" width="400"/>
-  <img src="assets/screenshots/ai_workspace.png" alt="AI Workspace Screenshot" width="400"/>
+  <img src="assets/screenshots/03-rag-document-chat.png?raw=true" alt="RAG Chat Screenshot" width="400"/>
+  <img src="assets/screenshots/02-ai-response-generator.png?raw=true" alt="Response Generator Screenshot" width="400"/>
 </div>
 
 ---
+
+## 🧠 Multi-Agent Architecture
 
 ```mermaid
 flowchart TD
@@ -42,59 +44,60 @@ flowchart TD
     RAG --> Synth
     ML --> Synth
     Hybrid --> Synth
+🧭 Router Agent (router.py): Analyzes natural language intent and dynamically classifies queries into SQL, RAG, ML, or Hybrid pipelines.
 
-    Synth --> Critic[🛡️ Critic Node<br/>Anti-Hallucination Guardrail]
-    
-    Critic -->|Validates Data| PDF[📄 Executive Brief / PDF]
+📊 Text-to-SQL Agent (sql_generator.py): Schema-aware SQL generation with parameterized execution against PostgreSQL. Includes strict read-only security validation.
 
+📚 Document RAG Agent (rag.py & vectorstore.py): Semantic search and chunk retrieval with inline citation metadata across uploaded PDFs, DOCX, and TXT files.
 
-1. **🧭 Router Agent (`router.py`):** Analyzes natural language intent and dynamically classifies queries into SQL, RAG, ML, or Hybrid pipelines.
-2. **📊 Text-to-SQL Agent (`sql_generator.py`):** Schema-aware SQL generation with parameterized execution against PostgreSQL.
-3. **📚 Document RAG Agent (`rag.py` & `vectorstore.py`):** Semantic search and chunk retrieval with inline citation metadata across uploaded PDFs, DOCX, and TXT files.
-4. **🔮 Predictive ML Engine (`ml_engine.py`):** Autonomous, code-free statistical modeling:
-   * **Time-Series Forecasting:** Dynamic Ridge Regression forecasting (`RidgeCV`) with intelligent temporal step detection.
-   * **Anomaly Detection:** Unsupervised outlier identification using `IsolationForest`.
-5. **🛡️ Critic Node / Reviewer Agent (`reviewer.py`):** Strict verification layer that checks proposed answers against ground-truth contexts (SQL tables, RAG chunks, or ML arrays) using structured JSON output to eliminate hallucinations.
+🔮 Predictive ML Engine (ml_engine.py): Autonomous, code-free statistical modeling:
 
----
+Time-Series Forecasting: Dynamic Ridge Regression forecasting (RidgeCV) with intelligent temporal step detection.
 
-## 🚀 Key Features
+Anomaly Detection: Unsupervised outlier identification using IsolationForest.
 
-* **Hybrid Cross-Reasoning:** Answers complex queries that require both quantitative database records and qualitative document claims (e.g., comparing actual SQL revenue against PDF report targets).
-* **Self-Healing Dynamic Schema Mapping:** Automatically identifies numeric targets (`money`, `revenue`, `sales`) and handles both calendar dates and integer-based time indices.
-* **Explainability by Design:** Inspect raw SQL queries, explore retrieved document chunk evidence, and view raw ML JSON payloads directly in the UI.
-* **One-Click Executive Briefs:** Compiles final, reviewer-approved insights and pipeline metadata into downloadable, formatted PDF reports.
-* **Automated Data Profiling:** Instant EDA, missing value analysis, duplicate detection, and interactive Plotly visual analytics.
+🛡️ Critic Node / Reviewer Agent (reviewer.py): Strict QA layer that checks proposed answers against ground-truth contexts (SQL tables, RAG chunks, or ML arrays) using structured JSON evaluation to eliminate hallucinations.
 
----
+🚀 Key Features
+Fault-Tolerant Auto-Retry Logic: Built-in exponential backoff gracefully handles API rate limits (429 Quota Exceeded) in the background without crashing the user interface.
 
-## 🛠️ Technology Stack
+Hybrid Cross-Reasoning: Answers complex queries that require both quantitative database records and qualitative document claims (e.g., comparing actual SQL revenue against PDF report targets).
 
-* **Frontend & UI:** Streamlit, Plotly, ReportLab (PDF Generation)
-* **LLM & Reasoning:** Google Gemini (Gemini 2.5 Flash API)
-* **Databases:** PostgreSQL (Neon Cloud), ChromaDB (Vector Store)
-* **Machine Learning & Analytics:** Scikit-Learn, Pandas, NumPy
-* **Architecture:** Multi-Agent Orchestration, Retrieval-Augmented Generation (RAG), Zero-Shot Routing
+Self-Healing Dynamic Schema Mapping: Automatically identifies numeric targets (money, revenue, sales) and handles both calendar dates and integer-based time indices.
 
----
+Explainability by Design: Inspect raw SQL queries, explore retrieved document chunk evidence, and view raw ML JSON payloads directly in the UI.
 
-## 📈 The Development Journey (v1.0 → v5.0)
+One-Click Executive Briefs: Compiles final, reviewer-approved insights and pipeline metadata into downloadable, formatted PDF reports.
 
-* **v1.0 — Text-to-SQL Foundation:** Natural language to PostgreSQL query generation and safe execution.
-* **v2.0 — Data Intelligence & Analytics:** Automated EDA, dynamic data profiling, and interactive Plotly visualizations.
-* **v3.0 — Data & Document Pipelines:** Ingestion, validation, cleaning, chunking, and metadata indexing pipelines.
-* **v4.0 — Hybrid RAG & Agentic Workflow:** Orchestrator architecture, vector retrieval, cross-source synthesis, and the anti-hallucination Critic Node.
-* **v5.0 — Predictive ML & Production Polish:** Integrated time-series forecasting, unsupervised anomaly detection, and automated PDF executive reporting.
+🛠️ Technology Stack
+Frontend & UI: Streamlit, Plotly, ReportLab (PDF Generation)
 
----
+LLM & Reasoning: Google Gemini (Gemini 2.5 Flash API) via google-generativeai
 
-## 💻 Local Installation & Setup
+Databases: PostgreSQL (Neon Cloud), ChromaDB (Vector Store)
 
-1. **Clone the repository:**
-   ```bash
-   git clone [https://github.com/mehulchavan11/PromptForge-AI.git](https://github.com/mehulchavan11/PromptForge-AI.git)
-   cd PromptForge-AI
-   Set up a virtual environment:
+Machine Learning & Analytics: Scikit-Learn, Pandas, NumPy
+
+Architecture: Multi-Agent Orchestration, Retrieval-Augmented Generation (RAG), Zero-Shot Routing
+
+📈 The Development Journey (v1.0 → v5.0)
+v1.0 — Text-to-SQL Foundation: Natural language to PostgreSQL query generation and safe execution.
+
+v2.0 — Data Intelligence & Analytics: Automated EDA, dynamic data profiling, and interactive Plotly visualizations.
+
+v3.0 — Data & Document Pipelines: Ingestion, validation, cleaning, chunking, and metadata indexing pipelines.
+
+v4.0 — Hybrid RAG & Agentic Workflow: Orchestrator architecture, vector retrieval, cross-source synthesis, and the anti-hallucination Critic Node.
+
+v5.0 — Predictive ML & Production Polish: Integrated time-series forecasting, unsupervised anomaly detection, exponential backoff resilience, and automated PDF executive reporting.
+
+💻 Local Installation & Setup
+1. Clone the repository:
+
+Bash
+git clone [https://github.com/mehulchavan11/PromptForge-AI.git](https://github.com/mehulchavan11/PromptForge-AI.git)
+cd PromptForge-AI
+2. Set up a virtual environment:
 
 Bash
 # Windows
@@ -104,17 +107,17 @@ python -m venv venv
 # macOS / Linux
 python3 -m venv venv
 source venv/bin/activate
-Install dependencies:
+3. Install dependencies:
 
 Bash
 pip install -r requirements.txt
-Configure Environment Variables:
+4. Configure Environment Variables:
 Create a .env file in the root directory:
 
 Code snippet
 GEMINI_API_KEY="your_google_gemini_api_key"
 DATABASE_URL="postgresql://username:password@host:port/database"
-Launch the Application:
+5. Launch the Application:
 
 Bash
 streamlit run Home.py
@@ -122,3 +125,8 @@ streamlit run Home.py
 Mehul Chavan
 
 GitHub: @mehulchavan11
+
+
+    Synth --> Critic[🛡️ Critic Node<br/>Anti-Hallucination Guardrail]
+    
+    Critic -->|Validates Data| PDF[📄 Executive Brief / PDF]
