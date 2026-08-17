@@ -23,8 +23,9 @@ PromptForge AI is an advanced agentic data intelligence platform designed to rea
 ### 2. Knowledge Hub & AI Workspace
 *(RAG knowledge ingestion, multi-agent hybrid reasoning, ML forecasting, and professional response generation)*
 <div align="center">
-  <img src="assets/screenshots/03-rag-document-chat.png" alt="RAG Chat Screenshot" width="400"/>
-  <img src="assets/screenshots/02-ai-response-generator.png" alt="Response Generator Screenshot" width="400"/>
+  <img src="assets/screenshots/03-rag-document-chat.png" alt="RAG Chat Screenshot" width="800"/>
+  <br><br>
+  <img src="assets/screenshots/02-ai-response-generator.png" alt="Response Generator Screenshot" width="800"/>
 </div>
 
 ### 3. AI Utilities & Executive Summarizer
@@ -90,7 +91,7 @@ flowchart TD
 
 **1. Clone the repository:**
 ```bash
-git clone https://github.com/mehulchavan11/PromptForge-AI.git
+git clone [https://github.com/mehulchavan11/PromptForge-AI.git](https://github.com/mehulchavan11/PromptForge-AI.git)
 cd PromptForge-AI
 ```
 
