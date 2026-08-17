@@ -1,10 +1,12 @@
 import google.generativeai as genai
 import os
 import re
+import time
 
 def generate_sql(prompt: str, table_name: str, schema_info: str) -> dict:
     """
     Converts a natural language prompt into a safe SQL query using Gemini.
+    Includes automated retry logic with backoff for API rate limits (429).
     """
     status = {"success": False, "sql": None, "error": None}
     
@@ -32,12 +34,32 @@ def generate_sql(prompt: str, table_name: str, schema_info: str) -> dict:
     
     try:
         model = genai.GenerativeModel("gemini-2.5-flash", system_instruction=system_instruction)
-        response = model.generate_content(prompt)
+        
+        # Automated Retry Mechanism for 429 Quota Exceeded / Rate Limit errors
+        max_retries = 3
+        base_delay = 15
+        response = None
+
+        for attempt in range(max_retries):
+            try:
+                response = model.generate_content(prompt)
+                break
+            except Exception as e:
+                error_msg = str(e)
+                if any(term in error_msg for term in ["429", "Quota", "ResourceExhausted"]):
+                    if attempt < max_retries - 1:
+                        time.sleep(base_delay * (attempt + 1))
+                        continue
+                raise e
+        
         raw_sql = response.text.strip()
         
         # Clean up any residual markdown formatting
         if raw_sql.startswith("```sql"):
             raw_sql = raw_sql[6:]
+        elif raw_sql.startswith("```"):
+            raw_sql = raw_sql[3:]
+            
         if raw_sql.endswith("```"):
             raw_sql = raw_sql[:-3]
             

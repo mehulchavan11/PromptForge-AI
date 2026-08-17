@@ -1,11 +1,13 @@
 import google.generativeai as genai
 import os
 import json
+import time
 
 def classify_intent(query: str) -> dict:
     """
     V5.0: Analyzes the user's query and routes it to the appropriate pipeline:
     'sql' (Database), 'rag' (Documents), 'ml' (Predictive), or 'hybrid' (Both).
+    Includes automated retry logic with backoff for API rate limits (429).
     """
     status = {
         "success": False, 
@@ -48,10 +50,35 @@ def classify_intent(query: str) -> dict:
         # Initialize the Gemini 2.5 Flash engine
         model = genai.GenerativeModel('gemini-2.5-flash', generation_config=generation_config)
         
-        response = model.generate_content(prompt)
+        # Automated Retry Mechanism for 429 Quota Exceeded / Rate Limit errors
+        max_retries = 3
+        base_delay = 15
+        response = None
+
+        for attempt in range(max_retries):
+            try:
+                response = model.generate_content(prompt)
+                break
+            except Exception as e:
+                error_msg = str(e)
+                if any(term in error_msg for term in ["429", "Quota", "ResourceExhausted"]):
+                    if attempt < max_retries - 1:
+                        time.sleep(base_delay * (attempt + 1))
+                        continue
+                raise e
+
+        # Clean potential markdown wrapping from response text
+        raw_text = response.text.strip()
+        if raw_text.startswith("```json"):
+            raw_text = raw_text[7:]
+        elif raw_text.startswith("```"):
+            raw_text = raw_text[3:]
+        if raw_text.endswith("```"):
+            raw_text = raw_text[:-3]
+        raw_text = raw_text.strip()
         
         # Parse the structured JSON output from Gemini
-        result_json = json.loads(response.text)
+        result_json = json.loads(raw_text)
         
         status["success"] = True
         # Default to 'rag' as a fallback safety if the model hallucinates a route
