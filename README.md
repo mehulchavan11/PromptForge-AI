@@ -48,7 +48,8 @@ flowchart TD
     Synth --> Critic[🛡️ Critic Node<br/>Anti-Hallucination Guardrail]
     
     Critic -->|Validates Data| PDF[📄 Executive Brief / PDF]
-    🧭 Router Agent (router.py): Analyzes natural language intent and dynamically classifies queries into SQL, RAG, ML, or Hybrid pipelines.
+   
+   🧭 Router Agent (router.py): Analyzes natural language intent and dynamically classifies queries into SQL, RAG, ML, or Hybrid pipelines.
 
 📊 Text-to-SQL Agent (sql_generator.py): Schema-aware SQL generation with parameterized execution against PostgreSQL. Includes strict read-only security validation.
 
@@ -105,12 +106,12 @@ source venv/bin/activate
 Bash
 pip install -r requirements.txt
 4. Configure Environment Variables:
-Create a .env file in the root directory:  
+Create a .env file in the root directory:
 
 Code snippet
 GEMINI_API_KEY="your_google_gemini_api_key"
 DATABASE_URL="postgresql://username:password@host:port/database"
-5. Launch the Application:  
+5. Launch the Application:
 
 Bash
 streamlit run Home.py
