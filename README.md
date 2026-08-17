@@ -27,6 +27,12 @@ PromptForge AI is an advanced agentic data intelligence platform designed to rea
   <img src="assets/screenshots/02-ai-response-generator.png" alt="Response Generator Screenshot" width="400"/>
 </div>
 
+### 3. AI Utilities & Executive Summarizer
+*(Instantly compress complex literature into structured executive summaries and key action items)*
+<div align="center">
+  <img src="assets/screenshots/04-ai-executive-summarizer.png" alt="AI Executive Summarizer" width="800"/>
+</div>
+
 ---
 
 ## 🧠 Multi-Agent Architecture
@@ -48,52 +54,48 @@ flowchart TD
     Synth --> Critic[🛡️ Critic Node<br/>Anti-Hallucination Guardrail]
     
     Critic -->|Validates Data| PDF[📄 Executive Brief / PDF]
-   
-   🧭 Router Agent (router.py): Analyzes natural language intent and dynamically classifies queries into SQL, RAG, ML, or Hybrid pipelines.
+```
 
-📊 Text-to-SQL Agent (sql_generator.py): Schema-aware SQL generation with parameterized execution against PostgreSQL. Includes strict read-only security validation.
+1. **🧭 Router Agent (`router.py`):** Analyzes natural language intent and dynamically classifies queries into SQL, RAG, ML, or Hybrid pipelines.
+2. **📊 Text-to-SQL Agent (`sql_generator.py`):** Schema-aware SQL generation with parameterized execution against PostgreSQL. Includes strict read-only security validation.
+3. **📚 Document RAG Agent (`rag.py` & `vectorstore.py`):** Semantic search and chunk retrieval with inline citation metadata across uploaded PDFs, DOCX, and TXT files.
+4. **🔮 Predictive ML Engine (`ml_engine.py`):** Autonomous, code-free statistical modeling:
+   * **Time-Series Forecasting:** Dynamic Ridge Regression forecasting (`RidgeCV`) with intelligent temporal step detection.
+   * **Anomaly Detection:** Unsupervised outlier identification using `IsolationForest`.
+5. **🛡️ Critic Node / Reviewer Agent (`reviewer.py`):** Strict QA layer that checks proposed answers against ground-truth contexts (SQL tables, RAG chunks, or ML arrays) using structured JSON evaluation to eliminate hallucinations.
 
-📚 Document RAG Agent (rag.py & vectorstore.py): Semantic search and chunk retrieval with inline citation metadata across uploaded PDFs, DOCX, and TXT files.
+---
 
-🔮 Predictive ML Engine (ml_engine.py): Autonomous, code-free statistical modeling:
+## 🚀 Key Features
 
-Time-Series Forecasting: Dynamic Ridge Regression forecasting (RidgeCV) with intelligent temporal step detection.
+* **Fault-Tolerant Auto-Retry Logic:** Built-in exponential backoff gracefully handles API rate limits (e.g., 429 Quota Exceeded) in the background without crashing the user interface.
+* **Hybrid Cross-Reasoning:** Answers complex queries that require both quantitative database records and qualitative document claims.
+* **Self-Healing Dynamic Schema Mapping:** Automatically identifies numeric targets and handles both calendar dates and integer-based time indices.
+* **Explainability by Design:** Inspect raw SQL queries, explore retrieved document chunk evidence, and view raw ML JSON payloads directly in the UI.
+* **One-Click Executive Briefs:** Compiles final, reviewer-approved insights and pipeline metadata into downloadable, formatted PDF reports.
 
-Anomaly Detection: Unsupervised outlier identification using IsolationForest.
+---
 
-🛡️ Critic Node / Reviewer Agent (reviewer.py): Strict QA layer that checks proposed answers against ground-truth contexts (SQL tables, RAG chunks, or ML arrays) using structured JSON evaluation to eliminate hallucinations.
+## 🛠️ Technology Stack
 
-🚀 Key Features
-Fault-Tolerant Auto-Retry Logic: Built-in exponential backoff gracefully handles API rate limits (e.g., 429 Quota Exceeded) in the background without crashing the user interface.
+* **Frontend & UI:** Streamlit, Plotly, ReportLab (PDF Generation)
+* **LLM & Reasoning:** Google Gemini (Gemini 2.5 Flash API) via `google-generativeai`
+* **Databases:** PostgreSQL (Neon Cloud), ChromaDB (Vector Store)
+* **Machine Learning & Analytics:** Scikit-Learn, Pandas, NumPy
+* **Architecture:** Multi-Agent Orchestration, Retrieval-Augmented Generation (RAG), Zero-Shot Routing
 
-Hybrid Cross-Reasoning: Answers complex queries that require both quantitative database records and qualitative document claims.
+---
 
-Self-Healing Dynamic Schema Mapping: Automatically identifies numeric targets and handles both calendar dates and integer-based time indices.
+## 💻 Local Installation & Setup
 
-Explainability by Design: Inspect raw SQL queries, explore retrieved document chunk evidence, and view raw ML JSON payloads directly in the UI.
-
-One-Click Executive Briefs: Compiles final, reviewer-approved insights and pipeline metadata into downloadable, formatted PDF reports.
-
-🛠️ Technology Stack
-Frontend & UI: Streamlit, Plotly, ReportLab (PDF Generation)
-
-LLM & Reasoning: Google Gemini (Gemini 2.5 Flash API) via google-generativeai
-
-Databases: PostgreSQL (Neon Cloud), ChromaDB (Vector Store)
-
-Machine Learning & Analytics: Scikit-Learn, Pandas, NumPy
-
-Architecture: Multi-Agent Orchestration, Retrieval-Augmented Generation (RAG), Zero-Shot Routing
-
-💻 Local Installation & Setup
-1. Clone the repository:
-
-Bash
-git clone [https://github.com/mehulchavan11/PromptForge-AI.git](https://github.com/mehulchavan11/PromptForge-AI.git)
+**1. Clone the repository:**
+```bash
+git clone https://github.com/mehulchavan11/PromptForge-AI.git
 cd PromptForge-AI
-2. Set up a virtual environment:
+```
 
-Bash
+**2. Set up a virtual environment:**
+```bash
 # Windows
 python -m venv venv
 .\venv\Scripts\activate
@@ -101,21 +103,27 @@ python -m venv venv
 # macOS / Linux
 python3 -m venv venv
 source venv/bin/activate
-3. Install dependencies:
+```
 
-Bash
+**3. Install dependencies:**
+```bash
 pip install -r requirements.txt
-4. Configure Environment Variables:
-Create a .env file in the root directory:
+```
 
-Code snippet
+**4. Configure Environment Variables:**
+Create a `.env` file in the root directory:
+```env
 GEMINI_API_KEY="your_google_gemini_api_key"
 DATABASE_URL="postgresql://username:password@host:port/database"
-5. Launch the Application:
+```
 
-Bash
+**5. Launch the Application:**
+```bash
 streamlit run Home.py
-👨‍💻 Author
-Mehul Chavan
+```
 
-GitHub: @mehulchavan11
+---
+
+## 👨‍💻 Author
+**Mehul Chavan**  
+* GitHub: [@mehulchavan11](https://github.com/mehulchavan11)
