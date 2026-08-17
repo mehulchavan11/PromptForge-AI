@@ -9,3 +9,5 @@ SQLAlchemy
 psycopg2-binary
 python-docx
 chromadb
+scikit-learn
+reportlab
