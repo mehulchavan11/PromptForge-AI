@@ -1,5 +1,6 @@
 import google.generativeai as genai
 import os
+import time
 import pandas as pd
 from src.ai.router import classify_intent
 from src.ai.sql_generator import generate_sql
@@ -9,9 +10,27 @@ from src.ai.rag import generate_rag_answer
 # V5.0 Imports: Machine Learning Engine
 from src.ai.ml_engine import run_anomaly_detection, run_time_series_forecast
 
+
+def _generate_with_retry(model, prompt: str, max_retries: int = 3, base_delay: int = 15):
+    """
+    Helper function to safely invoke Gemini with exponential backoff for 429 rate limits.
+    """
+    for attempt in range(max_retries):
+        try:
+            return model.generate_content(prompt)
+        except Exception as e:
+            error_msg = str(e)
+            if any(term in error_msg for term in ["429", "Quota", "ResourceExhausted"]):
+                if attempt < max_retries - 1:
+                    time.sleep(base_delay * (attempt + 1))
+                    continue
+            raise e
+
+
 def process_user_query(query: str, table_name: str = None, schema_info: str = "", df: pd.DataFrame = None) -> dict:
     """
     V5.0 Orchestrator: Routes and executes queries across SQL, RAG, ML, or Hybrid pipelines.
+    Includes strict numeric synthesis and fault-tolerant rate-limit handling.
     """
     output = {
         "success": False,
@@ -19,12 +38,12 @@ def process_user_query(query: str, table_name: str = None, schema_info: str = ""
         "reasoning": "",
         "sql_result": None,
         "rag_result": None,
-        "ml_result": None, # Added for V5.0
+        "ml_result": None,
         "final_synthesis": "",
         "error": None
     }
     
-    # 1. Route the intent using our V5.0 AI Router
+    # 1. Route the intent using the AI Router
     route_status = classify_intent(query)
     
     if not route_status["success"]:
@@ -33,6 +52,10 @@ def process_user_query(query: str, table_name: str = None, schema_info: str = ""
         
     output["route"] = route_status["route"]
     output["reasoning"] = route_status["reasoning"]
+    
+    api_key = os.getenv("GEMINI_API_KEY")
+    if api_key:
+        genai.configure(api_key=api_key)
     
     try:
         # --- PATH A: SQL ONLY ---
@@ -51,7 +74,28 @@ def process_user_query(query: str, table_name: str = None, schema_info: str = ""
                 "sql": sql_status["sql"],
                 "data": db_df
             }
-            output["final_synthesis"] = f"Generated and executed SQL query against table `{table_name}`."
+            
+            # Synthesize factual numbers directly from the query execution
+            if db_df is not None and not db_df.empty:
+                model = genai.GenerativeModel('gemini-2.5-flash')
+                sql_synthesis_prompt = f"""
+                You are an executive data analyst. Answer the user's question clearly and concisely using the SQL execution data provided.
+                
+                USER QUESTION: {query}
+                SQL QUERY RUN: {sql_status['sql']}
+                DATABASE RESULT:
+                {db_df.to_string(index=False)}
+                
+                CRITICAL INSTRUCTIONS:
+                1. State the exact numeric values, counts, sums, or names in the very first sentence.
+                2. Do NOT simply say "A SQL query was executed". Give the factual answer directly.
+                3. Keep the response professional, concise, and clear.
+                """
+                synth_response = _generate_with_retry(model, sql_synthesis_prompt)
+                output["final_synthesis"] = synth_response.text.strip()
+            else:
+                output["final_synthesis"] = "The query executed successfully, but returned no matching records."
+                
             output["success"] = True
 
         # --- PATH B: RAG ONLY ---
@@ -65,29 +109,24 @@ def process_user_query(query: str, table_name: str = None, schema_info: str = ""
             output["final_synthesis"] = rag_status["answer"]
             output["success"] = True
 
-        # --- PATH C: PREDICTIVE ML PIPELINE (V5.0 FEATURE) 🔮 ---
+        # --- PATH C: PREDICTIVE ML PIPELINE 🔮 ---
         elif output["route"] == "ml":
             if df is None and not table_name:
                 output["error"] = "ML routing selected, but no dataset was provided."
                 return output
                 
-            # If df isn't passed directly from Streamlit memory, fetch it from Postgres
             ml_df = df if df is not None else execute_safe_query(f"SELECT * FROM {table_name}")
             
             query_lower = query.lower()
             
-            # --- ENTERPRISE FIX: DYNAMIC COLUMN MAPPING ---
-            # 1. Find the target metric dynamically (money, revenue, or first numeric)
+            # Dynamic Column Mapping
             numeric_columns = ml_df.select_dtypes(include=["number"]).columns.tolist()
-            dynamic_target = 'money' if 'money' in ml_df.columns else ('revenue' if 'revenue' in ml_df.columns else numeric_columns[0])
+            dynamic_target = 'money' if 'money' in ml_df.columns else ('revenue' if 'revenue' in ml_df.columns else (numeric_columns[0] if numeric_columns else ml_df.columns[0]))
             
-            # 2. Find the time column dynamically (hour, date, time)
-            time_cols = [c for c in ml_df.columns if 'time' in c or 'date' in c or 'hour' in c]
+            time_cols = [c for c in ml_df.columns if any(k in c.lower() for k in ['time', 'date', 'hour', 'year', 'day'])]
             dynamic_date = time_cols[0] if time_cols else ml_df.columns[0]
-            # ----------------------------------------------
             
-            # Simple heuristic to trigger the correct ML function
-            if "predict" in query_lower or "forecast" in query_lower or "trend" in query_lower:
+            if any(k in query_lower for k in ["predict", "forecast", "trend"]):
                 ml_status = run_time_series_forecast(ml_df, date_col=dynamic_date, target_col=dynamic_target)
             else:
                 ml_status = run_anomaly_detection(ml_df, target_col=dynamic_target)
@@ -98,28 +137,26 @@ def process_user_query(query: str, table_name: str = None, schema_info: str = ""
                 
             output["ml_result"] = ml_status
             
-            # Synthesize the raw ML output into a readable narrative
-            genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+            # Synthesize raw ML output into an executive narrative with retry protection
             model = genai.GenerativeModel('gemini-2.5-flash')
-            
             ml_prompt = f"""
-            You are a Lead Data Scientist. 
+            You are a Lead Data Scientist.
             The user asked a predictive question: "{query}"
             
             Here is the raw output from our Machine Learning Engine:
             {ml_status}
             
             Write a clear, executive-friendly summary of these ML results. 
-            Highlight key predictions or anomalies, and explain what they mean for the business.
+            Highlight key predictions or anomalies and explain what they mean for the business.
             """
             
-            ml_response = model.generate_content(ml_prompt)
-            output["final_synthesis"] = ml_response.text
+            ml_response = _generate_with_retry(model, ml_prompt)
+            output["final_synthesis"] = ml_response.text.strip()
             output["success"] = True
 
-        # --- PATH D: HYBRID PIPELINE (SIGNATURE V4 FEATURE) ⭐ ---
+        # --- PATH D: HYBRID PIPELINE ⭐ ---
         elif output["route"] == "hybrid":
-            # 1. Execute SQL Pipeline if table exists
+            # 1. Execute SQL Pipeline
             if table_name:
                 sql_status = generate_sql(query, table_name, schema_info)
                 if sql_status["success"]:
@@ -134,11 +171,10 @@ def process_user_query(query: str, table_name: str = None, schema_info: str = ""
             if rag_status["success"]:
                 output["rag_result"] = rag_status
 
-            # 3. Reconcile both sources using Gemini Synthesis
-            genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+            # 3. Reconcile both sources using Gemini Synthesis with retry protection
             model = genai.GenerativeModel('gemini-2.5-flash')
             
-            sql_context = output["sql_result"]["data"].to_string() if output.get("sql_result") and "data" in output["sql_result"] else "No SQL data available."
+            sql_context = output["sql_result"]["data"].to_string(index=False) if output.get("sql_result") and isinstance(output["sql_result"].get("data"), pd.DataFrame) else "No SQL data available."
             rag_context = output["rag_result"]["answer"] if output.get("rag_result") else "No document data available."
             
             synthesis_prompt = f"""
@@ -156,11 +192,11 @@ def process_user_query(query: str, table_name: str = None, schema_info: str = ""
             TASK:
             1. Synthesize a unified, comprehensive answer comparing both sources.
             2. State clearly whether the SQL database findings align with or contradict the document claims.
-            3. Highlight key metrics from the database and keep the document inline citations intact.
+            3. Highlight key metrics and exact numbers from the database, and keep the document citations intact.
             """
             
-            synthesis_response = model.generate_content(synthesis_prompt)
-            output["final_synthesis"] = synthesis_response.text
+            synthesis_response = _generate_with_retry(model, synthesis_prompt)
+            output["final_synthesis"] = synthesis_response.text.strip()
             output["success"] = True
 
     except Exception as e:
