@@ -6,7 +6,7 @@ import time
 def generate_sql(prompt: str, table_name: str, schema_info: str) -> dict:
     """
     Converts a natural language prompt into a safe SQL query using Gemini.
-    Includes automated retry logic with backoff for API rate limits (429).
+    Includes strict prompt guardrails and automated retry logic for API rate limits.
     """
     status = {"success": False, "sql": None, "error": None}
     
@@ -17,17 +17,20 @@ def generate_sql(prompt: str, table_name: str, schema_info: str) -> dict:
         
     genai.configure(api_key=api_key)
     
-    # 1. System Prompt Engineering
+    # 1. System Prompt Engineering (Updated with Strict Guardrails)
     system_instruction = f"""
     You are an expert PostgreSQL data analyst. Convert the natural language prompt into a valid, executable SQL query.
     
-    Target Table: {table_name}
+    CRITICAL RULE: The target table name is exactly: "{table_name}"
+    You MUST use exactly "{table_name}" in your FROM clause. Do not add suffixes, do not invent table names, and do not use aliases that override the base table name in the FROM clause.
+    
     Table Schema (Columns & Types):
     {schema_info}
     
     Strict Rules:
     - ONLY generate SELECT queries.
     - NEVER generate queries containing DROP, DELETE, UPDATE, INSERT, ALTER, CREATE, or TRUNCATE.
+    - For complex aggregations, use Common Table Expressions (CTEs starting with WITH) or subqueries. NEVER use CREATE TEMP TABLE.
     - Respond strictly with the raw SQL query. Do not include markdown formatting like ```sql.
     - End the query with a semicolon (;).
     """
@@ -80,11 +83,12 @@ def generate_sql(prompt: str, table_name: str, schema_info: str) -> dict:
 
 def is_safe_sql(sql_query: str) -> bool:
     """
-    Validates that the SQL query is strictly a read-only SELECT statement.
+    Validates that the SQL query is strictly a read-only SELECT or WITH statement.
     """
     query_upper = sql_query.upper().lstrip()
     
-    if not query_upper.startswith("SELECT"):
+    # Allow standard SELECTs and CTEs (WITH)
+    if not query_upper.startswith("SELECT") and not query_upper.startswith("WITH"):
         return False
         
     forbidden_keywords = [
